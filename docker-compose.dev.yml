@@ -1,0 +1,250 @@
+version: "3.8"
+
+services:
+  redis-stack:
+    image: bitnami/redis:latest
+    container_name: redis-stack
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis-stack/data:/bitnami/redis/data
+      - ./redis-stack/conf:/bitnami/redis/conf
+    environment:
+      - REDIS_PASSWORD=redispassword
+    command: redis-server --appendonly yes --requirepass "password"
+
+  nats-server:
+    image: nats:latest
+    container_name: nats-server
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - ./nats-server/nats.conf:/etc/nats/nats.conf
+    command: ["-c", "/etc/nats/nats.conf"]
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./elasticsearch/data:/usr/share/elasticsearch/data
+      - ./elasticsearch/config:/usr/share/elasticsearch/config
+  sonic:
+    image: valeriansaliou/sonic:v1.4.9
+    container_name: sonic
+    ports:
+      - "1491:1491"
+      - "1493:1493"
+    volumes:
+      # - /path/to/your/sonic/config.cfg:/etc/sonic.cfg
+      - ./config/sonic.cfg:/etc/sonic.cfg
+    environment:
+      - SONIC_WORKERS=1
+      - SONIC_LOG_LEVEL=info
+      - SONIC_HOST=
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongo/data:/data/db
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/server-jaas.conf -Dzookeeper.authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider"
+    volumes:
+      - ./config/server-jaas.conf:/etc/kafka/server-jaas.conf
+
+  kafka1:
+    image: confluentinc/cp-kafka:latest
+    hostname: kafka1
+    container_name: kafka1
+    labels:
+      - "custom.project=kafkajs"
+      - "custom.service=kafka1"
+    depends_on:
+      - zookeeper
+    ports:
+      - "29092:29092"
+      - "9092:9092"
+      - "29093:29093"
+      - "9093:9093"
+      - "29094:29094"
+      - "9094:9094"
+    env_file: ./.env/kafka.env
+    environment:
+      KAFKA_BROKER_ID: 0
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:29092,PLAINTEXT_HOST://localhost:9092,SSL://kafka1:29093,SSL_HOST://localhost:9093,SASL_SSL://kafka1:29094,SASL_SSL_HOST://localhost:9094
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./certs/kafka.server.keystore.jks:/etc/kafka/secrets/kafka.server.keystore.jks
+      - ./certs/kafka.server.truststore.jks:/etc/kafka/secrets/kafka.server.truststore.jks
+      - ./certs/keystore_creds:/etc/kafka/secrets/keystore_creds
+      - ./certs/sslkey_creds:/etc/kafka/secrets/sslkey_creds
+      - ./certs/truststore_creds:/etc/kafka/secrets/truststore_creds
+      - ./config/server-jaas.conf:/opt/kafka/config/server-jaas.conf
+
+  kafka2:
+    image: confluentinc/cp-kafka:latest
+    hostname: kafka2
+    container_name: kafka2
+    labels:
+      - "custom.project=kafkajs"
+      - "custom.service=kafka2"
+    depends_on:
+      - zookeeper
+    ports:
+      - "29095:29095"
+      - "9095:9095"
+      - "29096:29096"
+      - "9096:9096"
+      - "29097:29097"
+      - "9097:9097"
+    env_file: ./.env/kafka.env
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:29095,PLAINTEXT_HOST://localhost:9095,SSL://kafka2:29096,SSL_HOST://localhost:9096,SASL_SSL://kafka2:29097,SASL_SSL_HOST://localhost:9097
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./certs/kafka.server.keystore.jks:/etc/kafka/secrets/kafka.server.keystore.jks
+      - ./certs/kafka.server.truststore.jks:/etc/kafka/secrets/kafka.server.truststore.jks
+      - ./certs/keystore_creds:/etc/kafka/secrets/keystore_creds
+      - ./certs/sslkey_creds:/etc/kafka/secrets/sslkey_creds
+      - ./certs/truststore_creds:/etc/kafka/secrets/truststore_creds
+      - ./config/server-jaas.conf:/opt/kafka/config/server-jaas.conf
+
+  kafka3:
+    image: confluentinc/cp-kafka:latest
+    hostname: kafka3
+    container_name: kafka3
+    labels:
+      - "custom.project=kafkajs"
+      - "custom.service=kafka3"
+    depends_on:
+      - zookeeper
+    ports:
+      - "29098:29098"
+      - "9098:9098"
+      - "29099:29099"
+      - "9099:9099"
+      - "29100:29100"
+      - "9101:9101"
+    env_file: ./.env/kafka.env
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:29098,PLAINTEXT_HOST://localhost:9098,SSL://kafka3:29099,SSL_HOST://localhost:9099,SASL_SSL://kafka3:29100,SASL_SSL_HOST://localhost:9101
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./certs/kafka.server.keystore.jks:/etc/kafka/secrets/kafka.server.keystore.jks
+      - ./certs/kafka.server.truststore.jks:/etc/kafka/secrets/kafka.server.truststore.jks
+      - ./certs/keystore_creds:/etc/kafka/secrets/keystore_creds
+      - ./certs/sslkey_creds:/etc/kafka/secrets/sslkey_creds
+      - ./certs/truststore_creds:/etc/kafka/secrets/truststore_creds
+      - ./config/server-jaas.conf:/opt/kafka/config/server-jaas.conf
+
+  #Services
+  auth-service:
+    build:
+      context: ./nodejs-services/auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "3001:3001"
+      - "50051:50051"
+    environment:
+      - NATS_URL=nats://nats-server:4222
+      - GRPC_SERVER_URL=0.0.0.0:50051
+    depends_on:
+      - nats-server
+
+  notification-service:
+    build:
+      context: ./nodejs-services/notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    ports:
+      - "3002:3002"
+      - "50052:50052"
+    environment:
+      - NATS_URL=nats://nats-server:4222
+      - GRPC_SERVER_URL=0.0.0.0:50052
+    depends_on:
+      - nats-server
+
+  data-processing-service:
+    build:
+      context: ./rust-services/data-processing-service
+      dockerfile: Dockerfile
+    container_name: data-processing-service
+    ports:
+      - "3003:3003"
+      - "50053:50053"
+    environment:
+      - NATS_URL=nats://nats-server:4222
+      - GRPC_SERVER_URL=0.0.0.0:50053
+    depends_on:
+      - nats-server
+
+  analytics-service:
+    build:
+      context: ./rust-services/analytics-service
+      dockerfile: Dockerfile
+    container_name: analytics-service
+    ports:
+      - "3004:3004"
+      - "50054:50054"
+    environment:
+      - NATS_URL=nats://nats-server:4222
+      - GRPC_SERVER_URL=0.0.0.0:50054
+    depends_on:
+      - nats-
+
+  search-service:
+    build:
+      context: ./nodejs-services/search-service
+      dockerfile: Dockerfile
+    container_name: search-service
+    ports:
+      - "3005:3005"
+      - "50055:50055"
+    environment:
+      - NATS_URL=nats://nats-server:4222
+      - GRPC_SERVER_URL=0.0.0.0:50055
+
+networks:
+  default:
+    name: nats-microservices-network

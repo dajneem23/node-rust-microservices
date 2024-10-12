@@ -1,3 +1,9 @@
 [submodule "nodejs-services"]
 	path = nodejs-services
-	url = git@github.com:dajneem23/nodejs-services.git
+	url = git@github.com:dajneem23/Nestjs-services.git
+[submodule "rust-services"]
+	path = rust-services
+	url = git@github.com:dajneem23/Rust-services.git
+[submodule "frontend"]
+	path = frontend
+	url = git@github.com:dajneem23/react-wasm-chess.git
